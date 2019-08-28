@@ -96,6 +96,12 @@ services:
             - '@contao.framework'
         public: true
 
+    Contao\CoreBundle\Controller\RobotsTxtController:
+        arguments:
+            - '@event_dispatcher'
+        public: true
+        tags: [ controller.service_arguments ]
+
     contao.controller_resolver:
         class: Contao\CoreBundle\HttpKernel\ControllerResolver
         decorates: controller_resolver
@@ -470,6 +476,36 @@ services:
             - '@router'
             - '@contao.framework'
             - '%contao.prepend_locale%'
+        public: true
+
+    contao.search.escargot_factory:
+        class: Contao\CoreBundle\Search\EscargotFactory
+        arguments:
+            - '@database_connection'
+            - '@contao.routing.url_generator'
+        public: true;
+
+    contao.search.escargot_subscriber.search_index:
+        class: Contao\CoreBundle\Search\EventListener\SearchIndexListener
+        arguments:
+            - '@contao.search.indexer'
+        tags:
+            - { name: 'contao.escargot_subscriber' }
+
+    contao.search.indexer.default:
+        class: Contao\CoreBundle\Search\Indexer\DefaultIndexer
+        arguments:
+            - '@contao.framework'
+            - '%contao.search.default_indexer.enable%'
+            - '%contao.search.default_indexer.enableIndexProtected%'
+        tags:
+            - { name: 'contao.search_indexer' }
+
+    contao.search.indexer.delegating:
+        class: Contao\CoreBundle\Search\Indexer\DelegatingIndexer
+
+    contao.search.indexer:
+        alias: 'contao.search.indexer.delegating'
         public: true
 
     contao.security.authentication_failure_handler:

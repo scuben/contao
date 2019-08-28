@@ -142,6 +142,6 @@ class InstallWebDirCommand extends Command
     {
         $path = $file->getRelativePathname();
 
-        return 'robots.txt' === $path && $this->fs->exists($webDir.'/'.$path);
+        return $this->fs->exists($webDir.'/'.$path);
     }
 }

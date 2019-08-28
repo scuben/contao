@@ -1,0 +1,73 @@
+<div id="tl_crawl" class="maintenance_<?= $this->isActive ? 'active' : 'inactive' ?>">
+
+  <h2 class="sub_headline sub_headline_index">Crawler</h2>
+
+
+  <?php if ($this->isRunning): ?>
+
+    <div id="tl_rebuild_index">
+      <p id="index_loading"></p>
+      <ul id="crawl_results"></ul>
+    </div>
+
+    <script>
+    (function(){
+        var loading = $('index_loading');
+        var crawlResults = $('crawl_results');
+
+        function execRequest() {
+            new Request({
+                url: window.location.href,
+                onSuccess: function(responseText, responseXML) {
+                    var response = JSON.decode(responseText);
+
+                    for (var uri in response.results) {
+                        if (response.results.hasOwnProperty(uri)) {
+
+                            crawlResults.append(new Element('li', {html: uri}));
+                        }
+                    }
+
+                    if (response.finished) {
+                        loading.setStyle('display', 'none');
+                    } else {
+                        execRequest();
+                    }
+                }
+            }).send();
+        }
+
+        execRequest();
+    })()
+    </script>
+
+  <?php else: ?>
+    <form action="<?= $this->action ?>" class="tl_form" method="get">
+      <div class="tl_formbody_edit tl_box">
+        <input type="hidden" name="do" value="maintenance">
+        <input type="hidden" name="act" value="crawl">
+        <input type="hidden" name="rt" value="<?= REQUEST_TOKEN ?>">
+        <div class="widget">
+          <fieldset id="crawl_subscriber_names" class="tl_checkbox_container mandatory<?php if ($this->error):?> error<?php endif; ?>">
+            <legend><span class="invisible">Mandatory field </span>Options<span class="mandatory">*</span></legend>
+            <input type="checkbox" id="check_all_crawl_subscriber_names" class="tl_checkbox" onclick="Backend.toggleCheckboxGroup(this,'crawl_subscriber_names')">
+            <label for="check_all_crawl_subscriber_names" style="color:#a6a6a6"><em>Select all</em></label>
+            <br>
+
+            <?php foreach($this->subscriberNames as $name): ?>
+              <input type="checkbox" name="crawl_subscriber_names[]" id="rebuild_search_index" class="tl_checkbox" value="<?= $name ?>">
+              <label for="rebuild_search_index">TODO: Label for <?= $name ?></label>
+            <?php endforeach; ?>
+          </fieldset>
+          <?php if ($this->error):?>
+          <p class="tl_error tl_tip" title=""><?= $this->error ?></p>
+          <?php endif; ?>
+        </div>
+      </div>
+      <div class="tl_submit_container">
+        <button type="submit" id="index" class="tl_submit">Start crawling</button>
+      </div>
+    </form>
+  <?php endif; ?>
+
+</div>

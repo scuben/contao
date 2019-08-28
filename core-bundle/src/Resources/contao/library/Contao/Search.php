@@ -54,12 +54,38 @@ class Search
 
 		$arrSet['tstamp'] = time();
 		$arrSet['url'] = $arrData['url'];
-		$arrSet['title'] = $arrData['title'];
 		$arrSet['protected'] = $arrData['protected'];
 		$arrSet['filesize'] = $arrData['filesize'];
 		$arrSet['groups'] = $arrData['groups'];
 		$arrSet['pid'] = $arrData['pid'];
-		$arrSet['language'] = $arrData['language'];
+
+		// Get the language from the content if not set explicitly
+		if (!isset($arrData['language']))
+		{
+			preg_match('/<html lang="(.+)">/', $arrData['content'], $matches);
+			if (isset($matches[1]))
+			{
+				$arrData['language'] = $matches[1];
+			}
+			else
+			{
+				$arrData['language'] = 'en'; // fallback
+			}
+		}
+
+		// Get the language from the content if not set explicitly
+		if (!isset($arrData['title']))
+		{
+			preg_match('/<title>(.+)<\/title>/', $arrData['content'], $matches);
+			if (isset($matches[1]))
+			{
+				$arrData['title'] = $matches[1];
+			}
+			else
+			{
+				$arrData['title'] = 'undefined'; // fallback
+			}
+		}
 
 		// Get the file size from the raw content
 		if (!$arrSet['filesize'])

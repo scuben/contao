@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\DependencyInjection;
 
 use Contao\CoreBundle\Picker\PickerProviderInterface;
+use Contao\CoreBundle\Search\EventListener\EscargotEventSubscriber;
+use Contao\CoreBundle\Search\Indexer\IndexerInterface;
 use Imagine\Exception\RuntimeException;
 use Imagine\Gd\Imagine;
 use Symfony\Component\Config\FileLocator;
@@ -80,6 +82,8 @@ class ContaoCoreExtension extends Extension
         $container->setParameter('contao.image.imagine_options', $config['image']['imagine_options']);
         $container->setParameter('contao.image.reject_large_uploads', $config['image']['reject_large_uploads']);
         $container->setParameter('contao.security.two_factor.enforce_backend', $config['security']['two_factor']['enforce_backend']);
+        $container->setParameter('contao.search.default_indexer.enable', $config['search']['default_indexer']['enable']);
+        $container->setParameter('contao.search.default_indexer.enableIndexProtected', $config['search']['default_indexer']['enableIndexProtected']);
 
         if (isset($config['localconfig'])) {
             $container->setParameter('contao.localconfig', $config['localconfig']);
@@ -92,6 +96,16 @@ class ContaoCoreExtension extends Extension
         $container
             ->registerForAutoconfiguration(PickerProviderInterface::class)
             ->addTag('contao.picker_provider')
+        ;
+
+        $container
+            ->registerForAutoconfiguration(EscargotEventSubscriber::class)
+            ->addTag('contao.escargot_subscriber')
+        ;
+
+        $container
+            ->registerForAutoconfiguration(IndexerInterface::class)
+            ->addTag('contao.search_indexer')
         ;
     }
 

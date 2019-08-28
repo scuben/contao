@@ -11,8 +11,6 @@
 // General settings
 $GLOBALS['TL_CONFIG']['characterSet']   = 'utf-8';
 $GLOBALS['TL_CONFIG']['adminEmail']     = '';
-$GLOBALS['TL_CONFIG']['enableSearch']   = true;
-$GLOBALS['TL_CONFIG']['indexProtected'] = false;
 $GLOBALS['TL_CONFIG']['folderUrl']      = false;
 
 // Date and time
