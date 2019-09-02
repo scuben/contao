@@ -1082,8 +1082,8 @@ class tl_content extends Contao\Backend
 		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
 		$objSession = Contao\System::getContainer()->get('session');
 
-		// Prevent editing/copying content elements with not allowed types
-		if (Contao\Input::get('act') == 'edit' || (Contao\Input::get('act') == 'paste' && Contao\Input::get('mode') == 'copy'))
+		// Prevent editing content elements with not allowed types
+		if (Contao\Input::get('act') == 'edit' || Contao\Input::get('act') == 'delete' || (Contao\Input::get('act') == 'paste' && Contao\Input::get('mode') == 'copy'))
 		{
 			$objCes = $this->Database->prepare("SELECT type FROM tl_content WHERE id=?")
 									 ->execute(Contao\Input::get('id'));
@@ -1095,7 +1095,7 @@ class tl_content extends Contao\Backend
 		}
 
 		// Prevent editing content elements with not allowed types
-		if (Contao\Input::get('act') == 'editAll' || Contao\Input::get('act') == 'overrideAll')
+		if (Contao\Input::get('act') == 'editAll' || Contao\Input::get('act') == 'overrideAll' || Contao\Input::get('act') == 'deleteAll')
 		{
 			$session = $objSession->all();
 
@@ -1756,11 +1756,21 @@ class tl_content extends Contao\Backend
 	 */
 	public function deleteElement($row, $href, $label, $title, $icon, $attributes)
 	{
+		if (!$this->User->hasAccess($row['type'], 'elements'))
+		{
+			return Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+		}
+
 		$objElement = $this->Database->prepare("SELECT id FROM tl_content WHERE cteAlias=? AND type='alias'")
 									 ->limit(1)
 									 ->execute($row['id']);
 
-		return $objElement->numRows ? Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ' : '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ';
+		if ($objElement->numRows)
+		{
+			return Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+		}
+
+		return '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ';
 	}
 
 	/**
@@ -1882,6 +1892,11 @@ class tl_content extends Contao\Backend
 	 */
 	public function toggleIcon($row, $href, $label, $title, $icon, $attributes)
 	{
+		if (!$this->User->hasAccess($row['type'], 'elements'))
+		{
+			return Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+		}
+
 		if (Contao\Input::get('cid'))
 		{
 			$this->toggleVisibility(Contao\Input::get('cid'), (Contao\Input::get('state') == 1), (@func_get_arg(12) ?: null));
