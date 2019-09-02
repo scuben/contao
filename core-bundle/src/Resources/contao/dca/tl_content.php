@@ -22,6 +22,7 @@ $GLOBALS['TL_DCA']['tl_content'] = array
 		'onload_callback'             => array
 		(
 			array('tl_content', 'adjustDcaByType'),
+			array('tl_content', 'filterContentElements'),
 			array('tl_content', 'showJsLibraryHint')
 		),
 		'sql' => array
@@ -942,65 +943,6 @@ class tl_content extends Contao\Backend
 				$this->checkAccessToElement(Contao\Input::get('id'), $pagemounts);
 				break;
 		}
-
-		// Prevent editing/copying content elements with not allowed types
-		if (Contao\Input::get('act') == 'edit' || (Contao\Input::get('act') == 'paste' && Contao\Input::get('mode') == 'copy'))
-		{
-			$objCe = $this->Database->prepare("SELECT type FROM tl_content WHERE id=?")
-									->execute(Contao\Input::get('id'));
-
-			if ($objCe->numRows && !$this->User->hasAccess($objCe->type, 'elements'))
-			{
-				throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to modify content elements of type "' . $objCe->type . '".');
-			}
-		}
-
-		// Prevent editing content elements with not allowed types
-		if (Contao\Input::get('act') == 'editAll' || Contao\Input::get('act') == 'overrideAll')
-		{
-			$session = $objSession->all();
-
-			if (!empty($session['CURRENT']['IDS']))
-			{
-				$objCes = $this->Database->query("SELECT id, type FROM tl_content WHERE id IN(" . implode(',', array_map('\intval', $session['CURRENT']['IDS'])) . ")");
-
-				while ($objCes->next())
-				{
-					if (!$this->User->hasAccess($objCes->type, 'elements') && ($key = array_search($objCes->id, $session['CURRENT']['IDS'])) !== false)
-					{
-						unset($session['CURRENT']['IDS'][$key]);
-					}
-				}
-
-				$objSession->replace($session);
-			}
-		}
-
-		// Prevent copying content elements with not allowed types
-		if (Contao\Input::get('act') == 'copyAll')
-		{
-			$session = $objSession->all();
-
-			if (!empty($session['CLIPBOARD']['tl_content']))
-			{
-				$objCes = $this->Database->query("SELECT id, type FROM tl_content WHERE id IN(" . implode(',', array_map('\intval', $session['CLIPBOARD']['tl_content']['id'])) . ")");
-
-				while ($objCes->next())
-				{
-					if (!$this->User->hasAccess($objCes->type, 'elements') && ($key = array_search($objCes->id, $session['CLIPBOARD']['tl_content']['id'])) !== false)
-					{
-						unset($session['CLIPBOARD']['tl_content']['id'][$key]);
-					}
-				}
-
-				if (empty($session['CLIPBOARD']['tl_content']['id']))
-				{
-					unset($session['CLIPBOARD']['tl_content']);
-				}
-
-				$objSession->replace($session);
-			}
-		}
 	}
 
 	/**
@@ -1115,6 +1057,87 @@ class tl_content extends Contao\Backend
 			case 'image':
 				$GLOBALS['TL_DCA']['tl_content']['fields']['imagemargin']['eval']['tl_class'] .= ' clr';
 				break;
+		}
+	}
+
+	/**
+	 * Filter the content elements
+	 */
+	public function filterContentElements()
+	{
+		if ($this->User->isAdmin)
+		{
+			return;
+		}
+
+		if (empty($this->User->elements))
+		{
+			$GLOBALS['TL_DCA']['tl_content']['config']['closed'] = true;
+		}
+		elseif (!\in_array($GLOBALS['TL_DCA']['tl_content']['fields']['type']['default'], $this->User->elements))
+		{
+			$GLOBALS['TL_DCA']['tl_content']['fields']['type']['default'] = $this->User->elements[0];
+		}
+
+		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
+		$objSession = Contao\System::getContainer()->get('session');
+
+		// Prevent editing/copying content elements with not allowed types
+		if (Contao\Input::get('act') == 'edit' || (Contao\Input::get('act') == 'paste' && Contao\Input::get('mode') == 'copy'))
+		{
+			$objCes = $this->Database->prepare("SELECT type FROM tl_content WHERE id=?")
+									 ->execute(Contao\Input::get('id'));
+
+			if ($objCes->numRows && !\in_array($objCes->type, $this->User->elements))
+			{
+				throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to modify content elements of type "' . $objCes->type . '".');
+			}
+		}
+
+		// Prevent editing content elements with not allowed types
+		if (Contao\Input::get('act') == 'editAll' || Contao\Input::get('act') == 'overrideAll')
+		{
+			$session = $objSession->all();
+
+			if (!empty($session['CURRENT']['IDS']) && \is_array($session['CURRENT']['IDS']))
+			{
+				if (empty($this->User->elements))
+				{
+					$session['CURRENT']['IDS'] = array();
+				}
+				else
+				{
+					$objCes = $this->Database->prepare("SELECT id FROM tl_content WHERE id IN(" . implode(',', array_map('\intval', $session['CURRENT']['IDS'])) . ") AND type IN(" . implode(',', array_fill(0, \count($this->User->elements), '?')). ")")
+											 ->execute(...$this->User->elements);
+
+					$session['CURRENT']['IDS'] = $objCes->fetchEach('id');
+				}
+
+				$objSession->replace($session);
+			}
+		}
+
+		// Prevent copying content elements with not allowed types
+		if (Contao\Input::get('act') == 'copyAll')
+		{
+			$session = $objSession->all();
+
+			if (!empty($session['CLIPBOARD']['tl_content']['id']) && \is_array($session['CLIPBOARD']['tl_content']['id']))
+			{
+				if (empty($this->User->elements))
+				{
+					$session['CLIPBOARD']['tl_content']['id'] = array();
+				}
+				else
+				{
+					$objCes = $this->Database->prepare("SELECT id, type FROM tl_content WHERE id IN(" . implode(',', array_map('\intval', $session['CLIPBOARD']['tl_content']['id'])) . ") AND type IN(" . implode(',', array_fill(0, \count($this->User->elements), '?')). ")")
+											 ->execute(...$this->User->elements);
+
+					$session['CLIPBOARD']['tl_content']['id'] = $objCes->fetchEach('id');
+				}
+
+				$objSession->replace($session);
+			}
 		}
 	}
 
