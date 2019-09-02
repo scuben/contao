@@ -44,7 +44,7 @@ class Document
     /**
      * @var array|null
      */
-    private $jsonLd;
+    private $jsonLds;
 
     public function __construct(UriInterface $uri, int $statusCode, array $headers = [], string $body = '')
     {
@@ -87,25 +87,36 @@ class Document
      */
     public function extractJsonLdScripts($context = '', $type = ''): array
     {
-        if (null !== $this->jsonLd) {
-            return $this->jsonLd;
+        if (null !== $this->jsonLds) {
+            return $this->filterJsonLd($this->jsonLds, $context, $type);
         }
 
-        $this->jsonLd = [];
+        $this->jsonLds = [];
 
         if ('' === $this->body) {
-            return $this->jsonLd;
+            return $this->jsonLds;
         }
 
         preg_match_all('@^<script type="application/ld\+json">(.+)</script>$@m', $this->body, $matches);
 
         if (!isset($matches[1])) {
-            return $this->jsonLd;
+            return $this->jsonLds;
         }
 
         foreach ($matches[1] as $match) {
             $data = json_decode($match, true);
 
+            $this->jsonLds[] = $data;
+        }
+
+        return $this->filterJsonLd($this->jsonLds, $context, $type);
+    }
+
+    private function filterJsonLd(array $jsonLds, $context = '', $type = ''): array
+    {
+        $matching = [];
+
+        foreach ($jsonLds as $data) {
             if ('' !== $context && (!isset($data['@context']) || $data['@context'] !== $context)) {
                 continue;
             }
@@ -114,9 +125,9 @@ class Document
                 continue;
             }
 
-            $this->jsonLd[] = $data;
+            $matching[] = $data;
         }
 
-        return $this->jsonLd;
+        return $matching;
     }
 }

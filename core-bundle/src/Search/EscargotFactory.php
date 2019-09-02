@@ -65,9 +65,18 @@ class EscargotFactory
     /**
      * @return EscargotEventSubscriber[]
      */
-    public function getSubscribers(): array
+    public function getSubscribers(array $selectedSubscribers = []): array
     {
-        return $this->subscribers;
+        if (0 === \count($selectedSubscribers)) {
+            return $this->subscribers;
+        }
+
+        return array_filter(
+            $this->subscribers,
+            static function (EscargotEventSubscriber $subscriber) use ($selectedSubscribers) {
+                return \in_array($subscriber->getName(), $selectedSubscribers, true);
+            }
+        );
     }
 
     public function getSubscriberNames(): array

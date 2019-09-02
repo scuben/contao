@@ -73,6 +73,11 @@ services:
             - '%kernel.project_dir%'
         public: true
 
+    Contao\CoreBundle\Controller\EscargotSubscriberController:
+        arguments:
+            - '@contao.search.escargot_factory'
+        public: true
+
     contao.controller.frontend_module.two_factor:
         class: Contao\CoreBundle\Controller\FrontendModule\TwoFactorController
         calls:
@@ -489,6 +494,7 @@ services:
         class: Contao\CoreBundle\Search\EventListener\SearchIndexListener
         arguments:
             - '@contao.search.indexer'
+            - '@router'
         tags:
             - { name: 'contao.escargot_subscriber' }
 

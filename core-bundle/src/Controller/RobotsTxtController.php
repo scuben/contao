@@ -22,6 +22,9 @@ use webignition\RobotsTxt\Directive\Directive;
 use webignition\RobotsTxt\File\File;
 use webignition\RobotsTxt\Record\Record;
 
+/**
+ * @Route(defaults={"_scope" = "frontend"})
+ */
 class RobotsTxtController
 {
     /**

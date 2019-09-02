@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\Command;
 
 use Contao\CoreBundle\Search\EscargotFactory;
+use Nyholm\Psr7\Uri;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
@@ -60,10 +61,12 @@ class CrawlCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $io->title('Contao Crawler');
 
         $subscribers = $input->getOption('subscribers');
         $queue = new InMemoryQueue();
         $baseUris = $this->escargotFactory->getSearchUriCollection();
+        $baseUris->add(new Uri('https://www.terminal42.ch')); // TODO: debug
 
         try {
             $escargot = $this->escargotFactory->create($baseUris, $queue, $subscribers);
@@ -73,17 +76,31 @@ class CrawlCommand extends Command
             return 1;
         }
 
+        $io->comment('Started crawling...');
+
         $progressBar = new ProgressBar($output);
         $progressBar->setFormat("%title%\n%current%/%max% [%bar%] %percent:3s%%");
-        $progressBar->setMessage('Starting search indexer...', 'title');
+        $progressBar->setMessage('Starting to crawl...', 'title');
 
         $progressBar->start();
+        $progressSubscriber = $this->getProgressSubscriber($progressBar);
 
         $escargot->setConcurrency((int) $input->getOption('concurrency'));
         $escargot->setRequestDelay((int) $input->getOption('delay'));
-        $escargot->addSubscriber($this->getProgressSubscriber($progressBar));
+        $escargot->addSubscriber($progressSubscriber);
 
         $escargot->crawl();
+
+        if ($progressSubscriber->isFinished()) {
+            $output->writeln('');
+            $output->writeln('');
+            $io->success('Finished crawling! Find the details for each subscriber below:');
+
+            foreach ($this->escargotFactory->getSubscribers($subscribers) as $subscriber) {
+                $io->section($subscriber->getName());
+                $subscriber->addResultToConsole($escargot, $output);
+            }
+        }
 
         return 0;
     }
@@ -96,9 +113,19 @@ class CrawlCommand extends Command
              */
             private $progressBar;
 
+            /**
+             * @var bool
+             */
+            private $isFinished = false;
+
             public function __construct(ProgressBar $progressBar)
             {
                 $this->progressBar = $progressBar;
+            }
+
+            public function isFinished(): bool
+            {
+                return $this->isFinished;
             }
 
             public function onResponse(AbstractResponseEvent $event): void
@@ -112,7 +139,9 @@ class CrawlCommand extends Command
 
             public function onFinished(FinishedCrawlingEvent $event): void
             {
+                $this->progressBar->setMessage('Done!', 'title');
                 $this->progressBar->finish();
+                $this->isFinished = true;
             }
 
             public static function getSubscribedEvents()

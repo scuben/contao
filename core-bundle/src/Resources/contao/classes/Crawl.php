@@ -13,15 +13,8 @@ namespace Contao;
 use Contao\CoreBundle\Exception\ResponseException;
 use Contao\CoreBundle\Search\EscargotFactory;
 use Nyholm\Psr7\Uri;
-use Psr\Log\Test\TestLogger;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Terminal42\Escargot\BaseUriCollection;
-use Terminal42\Escargot\Event\FinishedCrawlingEvent;
-use Terminal42\Escargot\Event\SuccessfulResponseEvent;
-use Terminal42\Escargot\EventSubscriber\LoggerSubscriber;
 use Terminal42\Escargot\Exception\InvalidJobIdException;
-use Terminal42\Escargot\Queue\InMemoryQueue;
 
 /**
  * Maintenance module "crawl".
@@ -74,6 +67,7 @@ class Crawl extends Backend implements \executable
 
 		if (!$jobId) {
 			$baseUris = $factory->getSearchUriCollection();
+			$baseUris->add(new Uri('https://www.terminal42.ch')); // TODO: debug
 			$escargot = $factory->create($baseUris, $queue, $selectedSubscribers);
 			Controller::redirect(\Controller::addToUrl('&jobId=' . $escargot->getJobId()));
 		} else {
@@ -85,9 +79,7 @@ class Crawl extends Backend implements \executable
 		}
 
 		$escargot->setConcurrency(10); // TODO: Configurable
-		$escargot->setMaxRequests(5); // TODO: Configurable
-		$recorder = $this->getRecorder();
-		$escargot->addSubscriber($recorder);
+		$escargot->setMaxRequests(rand(3, 8)); // TODO: Configurable
 
 		if (Environment::get('isAjaxRequest')) {
 			// Start crawling
@@ -97,38 +89,26 @@ class Crawl extends Backend implements \executable
 			$queue->commit($jobId);
 
 			// Return the results
+			$pending = $queue->countPending($jobId);
+			$finished = 0 === $pending;
+			$results = [];
+
+			if ($finished) {
+				foreach ($factory->getSubscribers($selectedSubscribers) as $subscriber) {
+					$results[$subscriber->getName()] = $subscriber->getResultAsHtml($escargot, $jobId);
+				}
+			}
+
 			$response = new JsonResponse([
-				'results' => $recorder->getResults(),
-				'finished' => 0 === $queue->countPending($jobId),
+				'pending' => $pending,
+				'total' => $queue->countAll($jobId),
+				'finished' => $finished,
+				'results' => $results,
 			]);
+
 			throw new ResponseException($response);
 		}
 
 		return $template->parse();
-	}
-
-	private function getRecorder(): EventSubscriberInterface
-	{
-		return new class implements EventSubscriberInterface
-		{
-			private $results = [];
-
-			public function getResults(): array
-			{
-				return $this->results;
-			}
-
-			public function onSuccessfulResponse(SuccessfulResponseEvent $event): void
-			{
-				$this->results[(string) $event->getCrawlUri()->getUri()] = $event->getResponse()->getStatusCode();
-			}
-
-			public static function getSubscribedEvents()
-			{
-				return [
-					SuccessfulResponseEvent::class => 'onSuccessfulResponse',
-				];
-			}
-		};
 	}
 }

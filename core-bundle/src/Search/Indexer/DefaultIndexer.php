@@ -53,10 +53,13 @@ class DefaultIndexer implements IndexerInterface
             return;
         }
 
-        $jsonLds = $document->extractJsonLdScripts('https://contao.org/', 'PageMetaData');
+        $meta = [
+            'protected' => false,
+            'groups' => [],
+            'pageId' => 0,
+        ];
 
-        // Merge all entries to one meta array (the latter overrides the former)
-        $meta = array_merge(...$jsonLds);
+        $this->extendMetaFromJsonLdScripts($document, $meta);
 
         // If search was disabled in the page settings, we do not index
         if (isset($meta['noSearch']) && true === $meta['noSearch']) {
@@ -103,5 +106,17 @@ class DefaultIndexer implements IndexerInterface
     public function isEnabled(): bool
     {
         return $this->isEnabled;
+    }
+
+    private function extendMetaFromJsonLdScripts(Document $document, array &$meta): void
+    {
+        $jsonLds = $document->extractJsonLdScripts('https://contao.org/', 'PageMetaData');
+
+        if (0 === \count($jsonLds)) {
+            return;
+        }
+
+        // Merge all entries to one meta array (the latter overrides the former)
+        $meta = array_merge(...$jsonLds);
     }
 }
