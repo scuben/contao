@@ -133,9 +133,8 @@
             <input type="checkbox" id="check_all_crawl_subscriber_names" class="tl_checkbox" onclick="Backend.toggleCheckboxGroup(this,'crawl_subscriber_names')">
             <label for="check_all_crawl_subscriber_names" style="color:#a6a6a6"><em>Select all</em></label>
             <br>
-
             <?php foreach($this->subscriberNames as $name): ?>
-              <input type="checkbox" name="crawl_subscriber_names[]" id="crawl_subscriber_names_<?= $name ?>" class="tl_checkbox" value="<?= $name ?>">
+              <input type="checkbox" name="crawl_subscriber_names[]" id="crawl_subscriber_names_<?= $name ?>" class="tl_checkbox" value="<?= $name ?>"<?php if (1 === \count($this->subscriberNames)): ?> checked<?php endif; ?>>
               <label for="crawl_subscriber_names_<?= $name ?>">TODO: Label for <?= $name ?></label>
             <?php endforeach; ?>
           </fieldset>

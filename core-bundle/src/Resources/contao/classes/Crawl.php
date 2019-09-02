@@ -90,6 +90,7 @@ class Crawl extends Backend implements \executable
 
 			// Return the results
 			$pending = $queue->countPending($jobId);
+			$all = $queue->countAll($jobId);
 			$finished = 0 === $pending;
 			$results = [];
 
@@ -97,11 +98,13 @@ class Crawl extends Backend implements \executable
 				foreach ($factory->getSubscribers($selectedSubscribers) as $subscriber) {
 					$results[$subscriber->getName()] = $subscriber->getResultAsHtml($escargot, $jobId);
 				}
+
+				$queue->deleteJobId($jobId);
 			}
 
 			$response = new JsonResponse([
 				'pending' => $pending,
-				'total' => $queue->countAll($jobId),
+				'total' => $all,
 				'finished' => $finished,
 				'results' => $results,
 			]);
